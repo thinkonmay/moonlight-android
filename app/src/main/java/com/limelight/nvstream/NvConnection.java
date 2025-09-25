@@ -3,15 +3,52 @@ package com.limelight.nvstream;
 import com.limelight.nvstream.av.audio.AudioRenderer;
 import com.limelight.nvstream.av.video.VideoDecoderRenderer;
 
-public class NvConnection {
+import org.jetbrains.annotations.NotNull;
+import java.net.InetSocketAddress;
+import java.util.Arrays;
+
+import io.github.thibaultbee.srtdroid.core.enums.ErrorType;
+import io.github.thibaultbee.srtdroid.core.enums.SockOpt;
+import io.github.thibaultbee.srtdroid.core.enums.Transtype;
+import io.github.thibaultbee.srtdroid.core.models.SrtSocket;
+
+public class NvConnection implements SrtSocket.ClientListener {
+    private boolean stopped = false;
+    private Thread recvThread;
     public NvConnection(StreamConfiguration config)
     {
+//        var socket = new SrtSocket();
+//        socket.connect("127.0.0.1",50000);
+//        // TODO java port of kotlin's assert true
+//        socket.setSockFlag(SockOpt.TRANSTYPE, Transtype.LIVE);
+//        socket.setClientListener(this);
+//        recvThread = this.createRecvThread(this,socket);
+//        recvThread.start();
     }
-    
+
+    private Thread createRecvThread(NvConnection conn,SrtSocket socket ) {
+        return new Thread() {
+            public void run() {
+                while (!conn.stopped) {
+                    var arr = new byte[2400];
+                    var size = socket.recv(arr,0,2400);
+                    conn.onPacketRecv(Arrays.copyOf(arr,size));
+                }
+            }
+        };
+    }
 
     public void stop() {
+        this.stopped = true;
+        if (this.recvThread != null) {
+            this.recvThread.interrupt();
+            this.recvThread = null;
+        }
     }
 
+
+    private void onPacketRecv(byte[] data) {
+    }
     
     public void start(final AudioRenderer audioRenderer, final VideoDecoderRenderer videoDecoderRenderer, final NvConnectionListener connectionListener)
     {
@@ -91,5 +128,10 @@ public class NvConnection {
 
     public void sendUtf8Text(final String text) {
         return;
+    }
+
+    @Override
+    public void onConnectionLost(@NotNull SrtSocket srtSocket, @NotNull ErrorType errorType, @NotNull InetSocketAddress inetSocketAddress, int i) {
+        // TODO
     }
 }

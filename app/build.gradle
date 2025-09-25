@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdk 34
+    compileSdk 35
 
     namespace 'com.limelight'
 
     defaultConfig {
         minSdk 21
-        targetSdk 34
+        targetSdk 35
 
         versionName "12.1"
         versionCode = 314
@@ -119,4 +119,5 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'org.jmdns:jmdns:3.5.9'
     implementation 'com.github.cgutman:ShieldControllerExtensions:1.0.1'
+    implementation 'io.github.thibaultbee.srtdroid:srtdroid-core:1.9.3'
 }

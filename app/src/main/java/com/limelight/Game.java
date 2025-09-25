@@ -71,8 +71,12 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.Locale;
 
 
@@ -438,7 +442,19 @@ public class Game extends Activity implements SurfaceHolder.Callback,
                 .setPersistGamepadsAfterDisconnect(!prefConfig.multiController)
                 .build();
 
-        conn = new NvConnection(config);
+        try {
+            conn = new NvConnection(config);
+        } catch (UnsupportedEncodingException e) {
+            // TODO
+            return;
+        } catch (UnknownHostException e) {
+            // TODO
+            return;
+        } catch (URISyntaxException e) {
+            // TODO
+            return;
+        }
+
         controllerHandler = new ControllerHandler(this, conn, this, prefConfig);
         keyboardTranslator = new KeyboardTranslator();
 

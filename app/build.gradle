@@ -120,4 +120,6 @@ dependencies {
     implementation 'org.jmdns:jmdns:3.5.9'
     implementation 'com.github.cgutman:ShieldControllerExtensions:1.0.1'
     implementation 'io.github.thibaultbee.srtdroid:srtdroid-core:1.9.3'
+    implementation 'org.java-websocket:Java-WebSocket:1.6.0'
+    implementation 'dnsjava:dnsjava:2.1.9' 
 }

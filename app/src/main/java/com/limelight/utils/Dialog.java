@@ -88,8 +88,6 @@ public class Dialog implements Runnable {
                 }
 
                 runOnDismiss.run();
-
-                HelpLauncher.launchTroubleshooting(activity);
             }
         });
         alert.setOnShowListener(new DialogInterface.OnShowListener(){

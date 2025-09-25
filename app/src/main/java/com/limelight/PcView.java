@@ -3,29 +3,7 @@ package com.limelight;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.UnknownHostException;
-
-import com.limelight.binding.PlatformBinding;
-import com.limelight.binding.crypto.AndroidCryptoProvider;
-import com.limelight.computers.ComputerManagerListener;
-import com.limelight.computers.ComputerManagerService;
-import com.limelight.grid.PcGridAdapter;
-import com.limelight.grid.assets.DiskAssetLoader;
-import com.limelight.nvstream.http.ComputerDetails;
-import com.limelight.nvstream.http.NvApp;
-import com.limelight.nvstream.http.NvHTTP;
-import com.limelight.nvstream.http.PairingManager;
-import com.limelight.nvstream.http.PairingManager.PairState;
-import com.limelight.nvstream.wol.WakeOnLanSender;
 import com.limelight.preferences.GlPreferences;
-import com.limelight.preferences.PreferenceConfiguration;
-import com.limelight.preferences.StreamSettings;
-import com.limelight.ui.AdapterFragment;
-import com.limelight.ui.AdapterFragmentCallbacks;
-import com.limelight.utils.Dialog;
-import com.limelight.utils.HelpLauncher;
-import com.limelight.utils.ServerHelper;
-import com.limelight.utils.ShortcutHelper;
-import com.limelight.utils.UiHelper;
 
 import android.app.Activity;
 import android.app.ActivityManager;
@@ -138,21 +116,5 @@ public class PcView extends Activity {
     @Override
     protected void onStop() {
         super.onStop();
-    }
-
-    public static class ComputerObject {
-        public ComputerDetails details;
-
-        public ComputerObject(ComputerDetails details) {
-            if (details == null) {
-                throw new IllegalArgumentException("details must not be null");
-            }
-            this.details = details;
-        }
-
-        @Override
-        public String toString() {
-            return details.name;
-        }
     }
 }

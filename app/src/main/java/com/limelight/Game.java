@@ -125,9 +125,6 @@ public class Game extends Activity implements SurfaceHolder.Callback,
     private boolean surfaceCreated = false;
     private boolean attemptedConnection = false;
     private int suppressPipRefCount = 0;
-    private String pcName;
-    private String appName;
-    private NvApp app;
     private float desiredRefreshRate;
 
     private InputCaptureProvider inputCaptureProvider;
@@ -307,33 +304,6 @@ public class Game extends Activity implements SurfaceHolder.Callback,
             e.printStackTrace();
         }
 
-        appName = Game.this.getIntent().getStringExtra(EXTRA_APP_NAME);
-        pcName = Game.this.getIntent().getStringExtra(EXTRA_PC_NAME);
-
-        String host = Game.this.getIntent().getStringExtra(EXTRA_HOST);
-        int port = Game.this.getIntent().getIntExtra(EXTRA_PORT, NvHTTP.DEFAULT_HTTP_PORT);
-        int httpsPort = Game.this.getIntent().getIntExtra(EXTRA_HTTPS_PORT, 0); // 0 is treated as unknown
-        int appId = Game.this.getIntent().getIntExtra(EXTRA_APP_ID, StreamConfiguration.INVALID_APP_ID);
-        String uniqueId = Game.this.getIntent().getStringExtra(EXTRA_UNIQUEID);
-        boolean appSupportsHdr = Game.this.getIntent().getBooleanExtra(EXTRA_APP_HDR, false);
-        byte[] derCertData = Game.this.getIntent().getByteArrayExtra(EXTRA_SERVER_CERT);
-
-        app = new NvApp(appName != null ? appName : "app", appId, appSupportsHdr);
-
-        X509Certificate serverCert = null;
-        try {
-            if (derCertData != null) {
-                serverCert = (X509Certificate) CertificateFactory.getInstance("X.509")
-                        .generateCertificate(new ByteArrayInputStream(derCertData));
-            }
-        } catch (CertificateException e) {
-            e.printStackTrace();
-        }
-
-        if (appId == StreamConfiguration.INVALID_APP_ID) {
-            finish();
-            return;
-        }
 
         // Initialize the MediaCodec helper before creating the decoder
         GlPreferences glPrefs = GlPreferences.readPreferences(this);
@@ -466,7 +436,6 @@ public class Game extends Activity implements SurfaceHolder.Callback,
                 .setResolution(prefConfig.width, prefConfig.height)
                 .setLaunchRefreshRate(prefConfig.fps)
                 .setRefreshRate(chosenFrameRate)
-                .setApp(app)
                 .setBitrate(prefConfig.bitrate)
                 .setEnableSops(prefConfig.enableSops)
                 .enableLocalAudioPlayback(prefConfig.playHostAudio)
@@ -481,11 +450,7 @@ public class Game extends Activity implements SurfaceHolder.Callback,
                 .setPersistGamepadsAfterDisconnect(!prefConfig.multiController)
                 .build();
 
-        // Initialize the connection
-        conn = new NvConnection(getApplicationContext(),
-                new ComputerDetails.AddressTuple(host, port),
-                httpsPort, uniqueId, config,
-                PlatformBinding.getCryptoProvider(this), serverCert);
+        conn = new NvConnection(config);
         controllerHandler = new ControllerHandler(this, conn, this, prefConfig);
         keyboardTranslator = new KeyboardTranslator();
 
@@ -643,15 +608,9 @@ public class Game extends Activity implements SurfaceHolder.Callback,
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (appName != null) {
-                builder.setTitle(appName);
-                if (pcName != null) {
-                    builder.setSubtitle(pcName);
-                }
-            }
-            else if (pcName != null) {
-                builder.setTitle(pcName);
-            }
+            builder.setTitle("");
+            builder.setSubtitle("");
+            builder.setTitle("");
         }
 
         return builder.build();
@@ -2418,17 +2377,6 @@ public class Game extends Activity implements SurfaceHolder.Callback,
                 hideSystemUi(1000);
             }
         });
-
-        // Report this shortcut being used (off the main thread to prevent ANRs)
-        ComputerDetails computer = new ComputerDetails();
-        computer.name = pcName;
-        computer.uuid = Game.this.getIntent().getStringExtra(EXTRA_PC_UUID);
-        ShortcutHelper shortcutHelper = new ShortcutHelper(this);
-        shortcutHelper.reportComputerShortcutUsed(computer);
-        if (appName != null) {
-            // This may be null if launched from the "Resume Session" PC context menu item
-            shortcutHelper.reportGameLaunched(computer, app);
-        }
     }
 
     @Override

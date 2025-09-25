@@ -150,8 +150,17 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
         addComputerButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent i = new Intent(PcView.this, AddComputerManually.class);
-                startActivity(i);
+                Intent intent = new Intent(PcView.this, Game.class);
+                intent.putExtra(Game.EXTRA_HOST, "");
+                intent.putExtra(Game.EXTRA_PORT, 0);
+                intent.putExtra(Game.EXTRA_HTTPS_PORT, 0);
+                intent.putExtra(Game.EXTRA_APP_NAME, "");
+                intent.putExtra(Game.EXTRA_APP_ID, 0);
+                intent.putExtra(Game.EXTRA_APP_HDR, true);
+                intent.putExtra(Game.EXTRA_UNIQUEID, "");
+                intent.putExtra(Game.EXTRA_PC_UUID, "");
+                intent.putExtra(Game.EXTRA_PC_NAME, "");
+                startActivity(intent);
             }
         });
         helpButton.setOnClickListener(new OnClickListener() {

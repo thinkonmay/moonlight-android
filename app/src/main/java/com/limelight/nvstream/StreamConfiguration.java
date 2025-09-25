@@ -1,6 +1,5 @@
 package com.limelight.nvstream;
 
-import com.limelight.nvstream.http.NvApp;
 import com.limelight.nvstream.jni.MoonBridge;
 
 public class StreamConfiguration {
@@ -10,7 +9,6 @@ public class StreamConfiguration {
     public static final int STREAM_CFG_REMOTE = 1;
     public static final int STREAM_CFG_AUTO = 2;
     
-    private NvApp app;
     private int width, height;
     private int refreshRate;
     private int launchRefreshRate;
@@ -31,11 +29,6 @@ public class StreamConfiguration {
 
     public static class Builder {
         private StreamConfiguration config = new StreamConfiguration();
-        
-        public StreamConfiguration.Builder setApp(NvApp app) {
-            config.app = app;
-            return this;
-        }
         
         public StreamConfiguration.Builder setRemoteConfiguration(int remote) {
             config.remote = remote;
@@ -135,7 +128,6 @@ public class StreamConfiguration {
     
     private StreamConfiguration() {
         // Set default attributes
-        this.app = new NvApp("Steam");
         this.width = 1280;
         this.height = 720;
         this.refreshRate = 60;
@@ -174,10 +166,6 @@ public class StreamConfiguration {
         return maxPacketSize;
     }
 
-    public NvApp getApp() {
-        return app;
-    }
-    
     public boolean getSops() {
         return sops;
     }

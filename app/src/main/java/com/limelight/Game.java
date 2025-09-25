@@ -26,7 +26,6 @@ import com.limelight.preferences.GlPreferences;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.ui.GameGestures;
 import com.limelight.ui.StreamView;
-import com.limelight.utils.Dialog;
 import com.limelight.utils.SpinnerDialog;
 import com.limelight.utils.UiHelper;
 
@@ -480,8 +479,8 @@ public class Game extends Activity implements SurfaceHolder.Callback,
             }
 
             // If we can't find an AVC decoder, we can't proceed
-            Dialog.displayDialog(this, getResources().getString(R.string.conn_error_title),
-                    "This device or ROM doesn't support hardware accelerated H.264 playback.", true);
+            // TODO: UI handler
+            LimeLog.severe("This device or ROM doesn't support hardware accelerated H.264 playback.");
             return;
         }
 
@@ -1021,7 +1020,6 @@ public class Game extends Activity implements SurfaceHolder.Callback,
         super.onStop();
 
         SpinnerDialog.closeDialogs(this);
-        Dialog.closeDialogs();
 
         if (virtualController != null) {
             virtualController.hide();

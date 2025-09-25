@@ -1441,7 +1441,8 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
                 }
 
                 float decodeTimeMs = (float)lastTwo.decoderTimeMs / lastTwo.totalFramesReceived;
-                long rttInfo = MoonBridge.getEstimatedRttInfo();
+                long rttInfo = 0;
+                // TODO: long rttInfo = MoonBridge.getEstimatedRttInfo();
                 StringBuilder sb = new StringBuilder();
                 sb.append(context.getString(R.string.perf_overlay_streamdetails, initialWidth + "x" + initialHeight, fps.totalFps)).append('\n');
                 sb.append(context.getString(R.string.perf_overlay_decoder, decoder)).append('\n');

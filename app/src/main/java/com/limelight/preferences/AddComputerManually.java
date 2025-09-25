@@ -165,16 +165,7 @@ public class AddComputerManually extends Activity {
             invalidInput = true;
         }
 
-        // Keep the SpinnerDialog open while testing connectivity
-        if (!success && !wrongSiteLocal && !invalidInput) {
-            // Run the test before dismissing the spinner because it can take a few seconds.
-            portTestResult = MoonBridge.testClientConnectivity(ServerHelper.CONNECTION_TEST_SERVER, 443,
-                    MoonBridge.ML_PORT_FLAG_TCP_47984 | MoonBridge.ML_PORT_FLAG_TCP_47989);
-        } else {
-            // Don't bother with the test if we succeeded or the IP address was bogus
-            portTestResult = MoonBridge.ML_TEST_RESULT_INCONCLUSIVE;
-        }
-
+        portTestResult = MoonBridge.ML_TEST_RESULT_INCONCLUSIVE;
         dialog.dismiss();
 
         if (invalidInput) {

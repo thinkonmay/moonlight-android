@@ -676,10 +676,6 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
                 Dialog.displayDialog(PcView.this, getResources().getString(R.string.title_details), computer.details.toString(), false);
                 return true;
 
-            case TEST_NETWORK_ID:
-                ServerHelper.doNetworkTest(PcView.this);
-                return true;
-
             case GAMESTREAM_EOL_ID:
                 HelpLauncher.launchGameStreamEolFaq(PcView.this);
                 return true;

@@ -2190,215 +2190,26 @@ public class Game extends Activity implements SurfaceHolder.Callback,
 
     @Override
     public void stageFailed(final String stage, final int portFlags, final int errorCode) {
-        // Perform a connection test if the failure could be due to a blocked port
-        // This does network I/O, so don't do it on the main thread.
-        final int portTestResult = MoonBridge.testClientConnectivity(ServerHelper.CONNECTION_TEST_SERVER, 443, portFlags);
-
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (spinner != null) {
-                    spinner.dismiss();
-                    spinner = null;
-                }
-
-                if (!displayedFailureDialog) {
-                    displayedFailureDialog = true;
-                    LimeLog.severe(stage + " failed: " + errorCode);
-
-                    // If video initialization failed and the surface is still valid, display extra information for the user
-                    if (stage.contains("video") && streamView.getHolder().getSurface().isValid()) {
-                        Toast.makeText(Game.this, getResources().getText(R.string.video_decoder_init_failed), Toast.LENGTH_LONG).show();
-                    }
-
-                    String dialogText = getResources().getString(R.string.conn_error_msg) + " " + stage +" (error "+errorCode+")";
-
-                    if (portFlags != 0) {
-                        dialogText += "\n\n" + getResources().getString(R.string.check_ports_msg) + "\n" +
-                                MoonBridge.stringifyPortFlags(portFlags, "\n");
-                    }
-
-                    if (portTestResult != MoonBridge.ML_TEST_RESULT_INCONCLUSIVE && portTestResult != 0)  {
-                        dialogText += "\n\n" + getResources().getString(R.string.nettest_text_blocked);
-                    }
-
-                    Dialog.displayDialog(Game.this, getResources().getString(R.string.conn_error_title), dialogText, true);
-                }
-            }
-        });
     }
 
     @Override
     public void connectionTerminated(final int errorCode) {
-        // Perform a connection test if the failure could be due to a blocked port
-        // This does network I/O, so don't do it on the main thread.
-        final int portFlags = MoonBridge.getPortFlagsFromTerminationErrorCode(errorCode);
-        final int portTestResult = MoonBridge.testClientConnectivity(ServerHelper.CONNECTION_TEST_SERVER,443, portFlags);
-
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                // Let the display go to sleep now
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-                // Stop processing controller input
-                controllerHandler.stop();
-
-                // Ungrab input
-                setInputGrabState(false);
-
-                if (!displayedFailureDialog) {
-                    displayedFailureDialog = true;
-                    LimeLog.severe("Connection terminated: " + errorCode);
-                    stopConnection();
-
-                    // Display the error dialog if it was an unexpected termination.
-                    // Otherwise, just finish the activity immediately.
-                    if (errorCode != MoonBridge.ML_ERROR_GRACEFUL_TERMINATION) {
-                        String message;
-
-                        if (portTestResult != MoonBridge.ML_TEST_RESULT_INCONCLUSIVE && portTestResult != 0) {
-                            // If we got a blocked result, that supersedes any other error message
-                            message = getResources().getString(R.string.nettest_text_blocked);
-                        }
-                        else {
-                            switch (errorCode) {
-                                case MoonBridge.ML_ERROR_NO_VIDEO_TRAFFIC:
-                                    message = getResources().getString(R.string.no_video_received_error);
-                                    break;
-
-                                case MoonBridge.ML_ERROR_NO_VIDEO_FRAME:
-                                    message = getResources().getString(R.string.no_frame_received_error);
-                                    break;
-
-                                case MoonBridge.ML_ERROR_UNEXPECTED_EARLY_TERMINATION:
-                                case MoonBridge.ML_ERROR_PROTECTED_CONTENT:
-                                    message = getResources().getString(R.string.early_termination_error);
-                                    break;
-
-                                case MoonBridge.ML_ERROR_FRAME_CONVERSION:
-                                    message = getResources().getString(R.string.frame_conversion_error);
-                                    break;
-
-                                default:
-                                    String errorCodeString;
-                                    // We'll assume large errors are hex values
-                                    if (Math.abs(errorCode) > 1000) {
-                                        errorCodeString = Integer.toHexString(errorCode);
-                                    }
-                                    else {
-                                        errorCodeString = Integer.toString(errorCode);
-                                    }
-                                    message = getResources().getString(R.string.conn_terminated_msg) + "\n\n" +
-                                            getResources().getString(R.string.error_code_prefix) + " " + errorCodeString;
-                                    break;
-                            }
-                        }
-
-                        if (portFlags != 0) {
-                            message += "\n\n" + getResources().getString(R.string.check_ports_msg) + "\n" +
-                                    MoonBridge.stringifyPortFlags(portFlags, "\n");
-                        }
-
-                        Dialog.displayDialog(Game.this, getResources().getString(R.string.conn_terminated_title),
-                                message, true);
-                    }
-                    else {
-                        finish();
-                    }
-                }
-            }
-        });
     }
 
     @Override
     public void connectionStatusUpdate(final int connectionStatus) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (prefConfig.disableWarnings) {
-                    return;
-                }
-
-                if (connectionStatus == MoonBridge.CONN_STATUS_POOR) {
-                    if (prefConfig.bitrate > 5000) {
-                        notificationOverlayView.setText(getResources().getString(R.string.slow_connection_msg));
-                    }
-                    else {
-                        notificationOverlayView.setText(getResources().getString(R.string.poor_connection_msg));
-                    }
-
-                    requestedNotificationOverlayVisibility = View.VISIBLE;
-                }
-                else if (connectionStatus == MoonBridge.CONN_STATUS_OKAY) {
-                    requestedNotificationOverlayVisibility = View.GONE;
-                }
-
-                if (!isHidingOverlays) {
-                    notificationOverlayView.setVisibility(requestedNotificationOverlayVisibility);
-                }
-            }
-        });
     }
 
     @Override
     public void connectionStarted() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (spinner != null) {
-                    spinner.dismiss();
-                    spinner = null;
-                }
-
-                connected = true;
-                connecting = false;
-                updatePipAutoEnter();
-
-                // Hide the mouse cursor now after a short delay.
-                // Doing it before dismissing the spinner seems to be undone
-                // when the spinner gets displayed. On Android Q, even now
-                // is too early to capture. We will delay a second to allow
-                // the spinner to dismiss before capturing.
-                Handler h = new Handler();
-                h.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        setInputGrabState(true);
-                    }
-                }, 500);
-
-                // Keep the display on
-                getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-                // Update GameManager state to indicate we're in game
-                UiHelper.notifyStreamConnected(Game.this);
-
-                hideSystemUi(1000);
-            }
-        });
     }
 
     @Override
     public void displayMessage(final String message) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                Toast.makeText(Game.this, message, Toast.LENGTH_LONG).show();
-            }
-        });
     }
 
     @Override
     public void displayTransientMessage(final String message) {
-        if (!prefConfig.disableWarnings) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(Game.this, message, Toast.LENGTH_LONG).show();
-                }
-            });
-        }
     }
 
     @Override

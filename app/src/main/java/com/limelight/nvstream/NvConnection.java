@@ -1,5 +1,7 @@
 package com.limelight.nvstream;
 
+import android.media.browse.MediaBrowser;
+
 import com.limelight.LimeLog;
 import com.limelight.nvstream.av.audio.AudioRenderer;
 import com.limelight.nvstream.av.video.VideoDecoderRenderer;
@@ -29,6 +31,9 @@ public class NvConnection implements SrtSocket.ClientListener {
     private Thread videoThread,audioThread,hidThread,microphoneThread;
     private SrtSocket audioSocket,videoSocket,microphoneSocket;
     private NvWebsocket hidSocket;
+    private VideoDecoderRenderer videoRenderer;
+    private AudioRenderer audioRenderer;
+    private NvConnectionListener listener;
 
     private static int VIDEO = 0;
     private static int AUDIO = 0;
@@ -44,7 +49,6 @@ public class NvConnection implements SrtSocket.ClientListener {
         var data = params.get("data");
         this.codec = codec;
         assert server != null;
-
 
         this.videoSocket = new SrtSocket();
         this.videoThread = this.createMediaThread(this,this.videoSocket,server,vmid,video,NvConnection.VIDEO);
@@ -111,6 +115,9 @@ public class NvConnection implements SrtSocket.ClientListener {
 
     public void start(final AudioRenderer audioRenderer, final VideoDecoderRenderer videoDecoderRenderer, final NvConnectionListener connectionListener)
     {
+        this.audioRenderer = audioRenderer;
+        this.videoRenderer = videoDecoderRenderer;
+        this.listener = connectionListener;
     }
     
     public void sendMouseMove(final short deltaX, final short deltaY)

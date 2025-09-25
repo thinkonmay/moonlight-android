@@ -188,44 +188,7 @@ public class MoonBridge {
         }
     }
 
-    public static int bridgeDrSetup(int videoFormat, int width, int height, int redrawRate) {
-        if (videoRenderer != null) {
-            return videoRenderer.setup(videoFormat, width, height, redrawRate);
-        }
-        else {
-            return -1;
-        }
-    }
 
-    public static void bridgeDrStart() {
-        if (videoRenderer != null) {
-            videoRenderer.start();
-        }
-    }
-
-    public static void bridgeDrStop() {
-        if (videoRenderer != null) {
-            videoRenderer.stop();
-        }
-    }
-
-    public static void bridgeDrCleanup() {
-        if (videoRenderer != null) {
-            videoRenderer.cleanup();
-        }
-    }
-
-    public static int bridgeDrSubmitDecodeUnit(byte[] decodeUnitData, int decodeUnitLength, int decodeUnitType,
-                                               int frameNumber, int frameType, char frameHostProcessingLatency,
-                                               long receiveTimeMs, long enqueueTimeMs) {
-        if (videoRenderer != null) {
-            return videoRenderer.submitDecodeUnit(decodeUnitData, decodeUnitLength,
-                    decodeUnitType, frameNumber, frameType, frameHostProcessingLatency, receiveTimeMs, enqueueTimeMs);
-        }
-        else {
-            return DR_OK;
-        }
-    }
 
     public static int bridgeArInit(int audioConfiguration, int sampleRate, int samplesPerFrame) {
         if (audioRenderer != null) {
@@ -326,17 +289,6 @@ public class MoonBridge {
         }
     }
 
-    public static void setupBridge(VideoDecoderRenderer videoRenderer, AudioRenderer audioRenderer, NvConnectionListener connectionListener) {
-        MoonBridge.videoRenderer = videoRenderer;
-        MoonBridge.audioRenderer = audioRenderer;
-        MoonBridge.connectionListener = connectionListener;
-    }
-
-    public static void cleanupBridge() {
-        MoonBridge.videoRenderer = null;
-        MoonBridge.audioRenderer = null;
-        MoonBridge.connectionListener = null;
-    }
 
     public static native int startConnection(String address, String appVersion, String gfeVersion,
                                               String rtspSessionUrl, int serverCodecModeSupport,

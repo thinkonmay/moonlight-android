@@ -60,37 +60,22 @@ public class NvConnection {
     
     public void sendMouseMove(final short deltaX, final short deltaY)
     {
-        if (!isMonkey) {
-            MoonBridge.sendMouseMove(deltaX, deltaY);
-        }
     }
 
     public void sendMousePosition(short x, short y, short referenceWidth, short referenceHeight)
     {
-        if (!isMonkey) {
-            MoonBridge.sendMousePosition(x, y, referenceWidth, referenceHeight);
-        }
     }
 
     public void sendMouseMoveAsMousePosition(short deltaX, short deltaY, short referenceWidth, short referenceHeight)
     {
-        if (!isMonkey) {
-            MoonBridge.sendMouseMoveAsMousePosition(deltaX, deltaY, referenceWidth, referenceHeight);
-        }
     }
 
     public void sendMouseButtonDown(final byte mouseButton)
     {
-        if (!isMonkey) {
-            MoonBridge.sendMouseButton(MouseButtonPacket.PRESS_EVENT, mouseButton);
-        }
     }
     
     public void sendMouseButtonUp(final byte mouseButton)
     {
-        if (!isMonkey) {
-            MoonBridge.sendMouseButton(MouseButtonPacket.RELEASE_EVENT, mouseButton);
-        }
     }
     
     public void sendControllerInput(final short controllerNumber,
@@ -99,101 +84,53 @@ public class NvConnection {
             final short leftStickX, final short leftStickY,
             final short rightStickX, final short rightStickY)
     {
-        if (!isMonkey) {
-            MoonBridge.sendMultiControllerInput(controllerNumber, activeGamepadMask, buttonFlags,
-                    leftTrigger, rightTrigger, leftStickX, leftStickY, rightStickX, rightStickY);
-        }
     }
 
     public void sendKeyboardInput(final short keyMap, final byte keyDirection, final byte modifier, final byte flags) {
-        if (!isMonkey) {
-            MoonBridge.sendKeyboardInput(keyMap, keyDirection, modifier, flags);
-        }
     }
     
     public void sendMouseScroll(final byte scrollClicks) {
-        if (!isMonkey) {
-            MoonBridge.sendMouseHighResScroll((short)(scrollClicks * 120)); // WHEEL_DELTA
-        }
     }
 
     public void sendMouseHScroll(final byte scrollClicks) {
-        if (!isMonkey) {
-            MoonBridge.sendMouseHighResHScroll((short)(scrollClicks * 120)); // WHEEL_DELTA
-        }
     }
 
     public void sendMouseHighResScroll(final short scrollAmount) {
-        if (!isMonkey) {
-            MoonBridge.sendMouseHighResScroll(scrollAmount);
-        }
     }
 
     public void sendMouseHighResHScroll(final short scrollAmount) {
-        if (!isMonkey) {
-            MoonBridge.sendMouseHighResHScroll(scrollAmount);
-        }
     }
 
     public int sendTouchEvent(byte eventType, int pointerId, float x, float y, float pressureOrDistance,
                               float contactAreaMajor, float contactAreaMinor, short rotation) {
-        if (!isMonkey) {
-            return MoonBridge.sendTouchEvent(eventType, pointerId, x, y, pressureOrDistance,
-                    contactAreaMajor, contactAreaMinor, rotation);
-        }
-        else {
-            return MoonBridge.LI_ERR_UNSUPPORTED;
-        }
+        return 0;
     }
 
     public int sendPenEvent(byte eventType, byte toolType, byte penButtons, float x, float y,
                             float pressureOrDistance, float contactAreaMajor, float contactAreaMinor,
                             short rotation, byte tilt) {
-        if (!isMonkey) {
-            return MoonBridge.sendPenEvent(eventType, toolType, penButtons, x, y, pressureOrDistance,
-                    contactAreaMajor, contactAreaMinor, rotation, tilt);
-        }
-        else {
-            return MoonBridge.LI_ERR_UNSUPPORTED;
-        }
+        return 0;
     }
 
     public int sendControllerArrivalEvent(byte controllerNumber, short activeGamepadMask, byte type,
                                           int supportedButtonFlags, short capabilities) {
-        return MoonBridge.sendControllerArrivalEvent(controllerNumber, activeGamepadMask, type, supportedButtonFlags, capabilities);
+        return 0;
     }
 
     public int sendControllerTouchEvent(byte controllerNumber, byte eventType, int pointerId,
                                         float x, float y, float pressure) {
-        if (!isMonkey) {
-            return MoonBridge.sendControllerTouchEvent(controllerNumber, eventType, pointerId, x, y, pressure);
-        }
-        else {
-            return MoonBridge.LI_ERR_UNSUPPORTED;
-        }
+        return 0;
     }
 
     public int sendControllerMotionEvent(byte controllerNumber, byte motionType,
                                          float x, float y, float z) {
-        if (!isMonkey) {
-            return MoonBridge.sendControllerMotionEvent(controllerNumber, motionType, x, y, z);
-        }
-        else {
-            return MoonBridge.LI_ERR_UNSUPPORTED;
-        }
+        return 0;
     }
 
     public void sendControllerBatteryEvent(byte controllerNumber, byte batteryState, byte batteryPercentage) {
-        MoonBridge.sendControllerBatteryEvent(controllerNumber, batteryState, batteryPercentage);
     }
 
     public void sendUtf8Text(final String text) {
-        if (!isMonkey) {
-            MoonBridge.sendUtf8Text(text);
-        }
-    }
-
-    public static String findExternalAddressForMdns(String stunHostname, int stunPort) {
-        return MoonBridge.findExternalAddressIP4(stunHostname, stunPort);
+        return;
     }
 }

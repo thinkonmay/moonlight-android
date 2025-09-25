@@ -1,8 +1,6 @@
 apply plugin: 'com.android.application'
 
 android {
-    ndkVersion "27.0.12077973"
-
     compileSdk 34
 
     namespace 'com.limelight'
@@ -13,9 +11,6 @@ android {
 
         versionName "12.1"
         versionCode = 314
-
-        // Generate native debug symbols to allow Google Play to symbolicate our native crashes
-        ndk.debugSymbolLevel = 'FULL'
     }
 
     flavorDimensions.add("root")
@@ -30,24 +25,12 @@ android {
             // version to devices running O on the Play Store.
             maxSdk 25
 
-            externalNativeBuild {
-                ndkBuild {
-                    arguments "PRODUCT_FLAVOR=root"
-                }
-            }
-
             applicationId "com.limelight.root"
             dimension "root"
             buildConfigField "boolean", "ROOT_BUILD", "true"
         }
 
         nonRoot {
-            externalNativeBuild {
-                ndkBuild {
-                    arguments "PRODUCT_FLAVOR=nonRoot"
-                }
-            }
-
             applicationId "com.limelight"
             dimension "root"
             buildConfigField "boolean", "ROOT_BUILD", "false"
@@ -125,12 +108,6 @@ android {
 
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
-
-    externalNativeBuild {
-        ndkBuild {
-            path "src/main/jni/Android.mk"
         }
     }
 }

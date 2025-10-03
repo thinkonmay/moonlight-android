@@ -5,6 +5,7 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -14,8 +15,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public class NvWebsocket extends WebSocketClient {
     private Queue<byte[]> queue = new ConcurrentLinkedQueue<byte[]>();
-    public NvWebsocket(URI serverURI) {
-        super(serverURI);
+    public NvWebsocket(String serverURI) throws URISyntaxException {
+        super(new URI(serverURI));
     }
 
     @Override

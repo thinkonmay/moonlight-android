@@ -437,7 +437,11 @@ public class Game extends Activity implements SurfaceHolder.Callback,
                 .setColorRange(decoderRenderer.getPreferredColorRange())
                 .build();
 
-        conn = new NvConnection(config);
+        try {
+            conn = new NvConnection(config);
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
 
         controllerHandler = new ControllerHandler(this, conn, this, prefConfig);
         keyboardTranslator = new KeyboardTranslator();

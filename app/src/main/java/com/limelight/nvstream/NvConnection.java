@@ -5,6 +5,8 @@ import android.media.browse.MediaBrowser;
 import com.limelight.LimeLog;
 import com.limelight.nvstream.av.audio.AudioRenderer;
 import com.limelight.nvstream.av.video.VideoDecoderRenderer;
+import com.limelight.utils.BitReader;
+
 import java.net.InetAddress;
 import org.jetbrains.annotations.NotNull;
 
@@ -40,7 +42,7 @@ public class NvConnection implements SrtSocket.ClientListener {
     private static int AUDIO = 1;
     private static int HID = 2;
     private static int MICROPHONE = 3;
-    public NvConnection(StreamConfiguration config) {
+    public NvConnection(StreamConfiguration config) throws URISyntaxException {
         var params = NvConnection.getQueryParams(NvConnection.url);
         var server = params.get("server");
         var vmid = params.get("vmid");
@@ -59,7 +61,7 @@ public class NvConnection implements SrtSocket.ClientListener {
         this.audioThread = this.createMediaThread(this,this.audioSocket,server,vmid,audio,NvConnection.AUDIO);
         this.audioThread.start();
 
-        this.hidSocket = new NvWebsocket(new URI("https://"+server+":444/broadcasters/websocket?vmid="+vmid+"&token="+data));
+        this.hidSocket = new NvWebsocket("https://"+server+":444/broadcasters/websocket?vmid="+vmid+"&token="+data);
         this.hidThread = this.createDataThread(this,this.hidSocket,NvConnection.HID);
         this.hidThread.start();
     }
@@ -111,7 +113,15 @@ public class NvConnection implements SrtSocket.ClientListener {
 
 
     private void onPacketRecv(int type, byte[] data) {
-//        LimeLog.info("receive " + data.length +" packet for type"+ type );
+        var reader = new BitReader(data);
+        var index = reader.readUint32LE();
+        var timestamp = reader.readUint64LE();
+        var fragmentLength = reader.readUint16LE();
+        var fragmentStart = reader.readUint16LE();
+        var fragmentEnd = reader.readUint16LE();
+        var buff = reader.left();
+
+        LimeLog.info(index + ","+timestamp + ","+fragmentLength +","+fragmentStart +","+fragmentEnd );
     }
 
 

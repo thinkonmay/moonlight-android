@@ -3,37 +3,20 @@ package com.limelight.nvstream;
 import com.limelight.nvstream.jni.MoonBridge;
 
 public class StreamConfiguration {
-    public static final int INVALID_APP_ID = 0;
-
-    public static final int STREAM_CFG_LOCAL = 0;
-    public static final int STREAM_CFG_REMOTE = 1;
-    public static final int STREAM_CFG_AUTO = 2;
-    
     private int width, height;
     private int refreshRate;
     private int launchRefreshRate;
     private int clientRefreshRateX100;
     private int bitrate;
-    private boolean sops;
-    private boolean enableAdaptiveResolution;
-    private boolean playLocalAudio;
-    private int maxPacketSize;
-    private int remote;
+
     private MoonBridge.AudioConfiguration audioConfiguration;
     private int supportedVideoFormats;
     private int attachedGamepadMask;
-    private int encryptionFlags;
     private int colorRange;
     private int colorSpace;
-    private boolean persistGamepadsAfterDisconnect;
 
     public static class Builder {
         private StreamConfiguration config = new StreamConfiguration();
-        
-        public StreamConfiguration.Builder setRemoteConfiguration(int remote) {
-            config.remote = remote;
-            return this;
-        }
         
         public StreamConfiguration.Builder setResolution(int width, int height) {
             config.width = width;
@@ -56,26 +39,6 @@ public class StreamConfiguration {
             return this;
         }
         
-        public StreamConfiguration.Builder setEnableSops(boolean enable) {
-            config.sops = enable;
-            return this;
-        }
-        
-        public StreamConfiguration.Builder enableAdaptiveResolution(boolean enable) {
-            config.enableAdaptiveResolution = enable;
-            return this;
-        }
-        
-        public StreamConfiguration.Builder enableLocalAudioPlayback(boolean enable) {
-            config.playLocalAudio = enable;
-            return this;
-        }
-        
-        public StreamConfiguration.Builder setMaxPacketSize(int maxPacketSize) {
-            config.maxPacketSize = maxPacketSize;
-            return this;
-        }
-
         public StreamConfiguration.Builder setAttachedGamepadMask(int attachedGamepadMask) {
             config.attachedGamepadMask = attachedGamepadMask;
             return this;
@@ -88,11 +51,6 @@ public class StreamConfiguration {
                     config.attachedGamepadMask |= 1 << i;
                 }
             }
-            return this;
-        }
-
-        public StreamConfiguration.Builder setPersistGamepadsAfterDisconnect(boolean value) {
-            config.persistGamepadsAfterDisconnect = value;
             return this;
         }
 
@@ -133,10 +91,6 @@ public class StreamConfiguration {
         this.refreshRate = 60;
         this.launchRefreshRate = 60;
         this.bitrate = 10000;
-        this.maxPacketSize = 1024;
-        this.remote = STREAM_CFG_AUTO;
-        this.sops = true;
-        this.enableAdaptiveResolution = false;
         this.audioConfiguration = MoonBridge.AUDIO_CONFIGURATION_STEREO;
         this.supportedVideoFormats = MoonBridge.VIDEO_FORMAT_H264;
         this.attachedGamepadMask = 0;
@@ -162,25 +116,6 @@ public class StreamConfiguration {
         return bitrate;
     }
     
-    public int getMaxPacketSize() {
-        return maxPacketSize;
-    }
-
-    public boolean getSops() {
-        return sops;
-    }
-    
-    public boolean getAdaptiveResolutionEnabled() {
-        return enableAdaptiveResolution;
-    }
-    
-    public boolean getPlayLocalAudio() {
-        return playLocalAudio;
-    }
-    
-    public int getRemote() {
-        return remote;
-    }
 
     public MoonBridge.AudioConfiguration getAudioConfiguration() {
         return audioConfiguration;
@@ -192,10 +127,6 @@ public class StreamConfiguration {
 
     public int getAttachedGamepadMask() {
         return attachedGamepadMask;
-    }
-
-    public boolean getPersistGamepadsAfterDisconnect() {
-        return persistGamepadsAfterDisconnect;
     }
 
     public int getClientRefreshRateX100() {

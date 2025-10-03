@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -25,7 +26,7 @@ import io.github.thibaultbee.srtdroid.core.enums.Transtype;
 import io.github.thibaultbee.srtdroid.core.models.SrtSocket;
 
 public class NvConnection implements SrtSocket.ClientListener {
-    private static String url = "https://thinkmay.net/play/index.html?server=haiphong.thinkmay.net&audio=4676534b-9934-4bb1-808d-76ca209814d7&codec=h264&video=44a2f3a5-039f-4342-93c9-1c7b8146ff3b&vmid=ebbac54d-4b9e-4996-9f55-1e7369ffe49b&data=d7c36895-4b21-44ed-806b-919b249f6518&ref=huyhoangdo0205&demo=huyhoangdo0205";
+    private static String url = "http://localhost:3000/play/?server=dev.thinkmay.net&audio=183a2263-8062-4ebd-ad9b-17781c95688c&codec=h265&video=66425ed3-a732-42c3-8dd5-aed382279857&vmid=c17355bc-124c-42b4-98cf-7e4e3cc563f3&data=31ab8fe3-b82b-4b7a-8427-9e94ed5afc0c";
     private boolean stopped = false;
     private String codec = "h264";
     private Thread videoThread,audioThread,hidThread,microphoneThread;
@@ -36,10 +37,10 @@ public class NvConnection implements SrtSocket.ClientListener {
     private NvConnectionListener listener;
 
     private static int VIDEO = 0;
-    private static int AUDIO = 0;
-    private static int HID = 0;
-    private static int MICROPHONE = 0;
-    public NvConnection(StreamConfiguration config) throws UnsupportedEncodingException, UnknownHostException, URISyntaxException {
+    private static int AUDIO = 1;
+    private static int HID = 2;
+    private static int MICROPHONE = 3;
+    public NvConnection(StreamConfiguration config) {
         var params = NvConnection.getQueryParams(NvConnection.url);
         var server = params.get("server");
         var vmid = params.get("vmid");
@@ -69,20 +70,20 @@ public class NvConnection implements SrtSocket.ClientListener {
                 String inetAddr = null;
                 try {
                     inetAddr = InetAddress.getByName(hostname).getHostAddress();
-                } catch (UnknownHostException e) {
-                    throw new RuntimeException(e);
-                }
 
-                assert inetAddr != null;
-                socket.setSockFlag(SockOpt.TRANSTYPE, Transtype.LIVE);
-                socket.setSockFlag(SockOpt.STREAMID,vmid+":"+token+":1456");
-                socket.setSockFlag(SockOpt.LATENCY,300);
-                socket.connect(inetAddr,50006);
+                    assert inetAddr != null;
+                    socket.setSockFlag(SockOpt.TRANSTYPE, Transtype.LIVE);
+                    socket.setSockFlag(SockOpt.STREAMID,vmid+":"+token+":1456");
+                    socket.setSockFlag(SockOpt.LATENCY,300);
+                    socket.connect(inetAddr,50006);
 
-                var arr = new byte[2400];
-                while (!conn.stopped) {
-                    var size = socket.recv(arr,0,2400);
-                    conn.onPacketRecv(type,Arrays.copyOf(arr,size));
+                    var arr = new byte[2400];
+                    while (!conn.stopped) {
+                        var size = socket.recv(arr,0,2400);
+                        conn.onPacketRecv(type,Arrays.copyOf(arr,size));
+                    }
+                } catch (Exception e) {
+                    LimeLog.warning("thread " +type+ " got exception " + e);
                 }
             }
         };
@@ -110,6 +111,7 @@ public class NvConnection implements SrtSocket.ClientListener {
 
 
     private void onPacketRecv(int type, byte[] data) {
+//        LimeLog.info("receive " + data.length +" packet for type"+ type );
     }
 
 

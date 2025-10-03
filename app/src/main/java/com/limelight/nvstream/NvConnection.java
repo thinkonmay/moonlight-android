@@ -1,7 +1,5 @@
 package com.limelight.nvstream;
 
-import android.media.browse.MediaBrowser;
-
 import com.limelight.LimeLog;
 import com.limelight.nvstream.av.audio.AudioRenderer;
 import com.limelight.nvstream.av.video.VideoDecoderRenderer;
@@ -10,17 +8,15 @@ import com.limelight.utils.BitReader;
 import java.net.InetAddress;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
-import java.net.SocketTimeoutException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import io.github.thibaultbee.srtdroid.core.enums.ErrorType;
 import io.github.thibaultbee.srtdroid.core.enums.SockOpt;
@@ -38,6 +34,14 @@ public class NvConnection implements SrtSocket.ClientListener {
     private AudioRenderer audioRenderer;
     private NvConnectionListener listener;
 
+    class PacketBuffer {
+        byte[] buffer;
+        long fullfilled;
+        long totalLength;
+    }
+    private ConcurrentHashMap<Long,PacketBuffer> videoBuffer = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<Long,PacketBuffer> audioBuffer = new ConcurrentHashMap<>();
+
     private static int VIDEO = 0;
     private static int AUDIO = 1;
     private static int HID = 2;
@@ -54,11 +58,23 @@ public class NvConnection implements SrtSocket.ClientListener {
         assert server != null;
 
         this.videoSocket = new SrtSocket();
-        this.videoThread = this.createMediaThread(this,this.videoSocket,server,vmid,video,NvConnection.VIDEO);
+        this.videoThread = this.createMediaThread(this,
+                this.videoSocket,
+                server,
+                vmid,
+                video,
+                this.videoBuffer,
+                NvConnection.VIDEO);
         this.videoThread.start();
 
         this.audioSocket = new SrtSocket();
-        this.audioThread = this.createMediaThread(this,this.audioSocket,server,vmid,audio,NvConnection.AUDIO);
+        this.audioThread = this.createMediaThread(this,
+                this.audioSocket,
+                server,
+                vmid,
+                audio,
+                this.audioBuffer,
+                NvConnection.AUDIO);
         this.audioThread.start();
 
         this.hidSocket = new NvWebsocket("https://"+server+":444/broadcasters/websocket?vmid="+vmid+"&token="+data);
@@ -66,7 +82,7 @@ public class NvConnection implements SrtSocket.ClientListener {
         this.hidThread.start();
     }
 
-    private Thread createMediaThread(NvConnection conn, SrtSocket socket, String hostname, String vmid, String token, int type) {
+    private Thread createMediaThread(NvConnection conn, SrtSocket socket, String hostname, String vmid, String token, ConcurrentMap<Long,PacketBuffer> buffer, int type) {
         return new Thread() {
             public void run() {
                 String inetAddr = null;
@@ -82,7 +98,7 @@ public class NvConnection implements SrtSocket.ClientListener {
                     var arr = new byte[2400];
                     while (!conn.stopped) {
                         var size = socket.recv(arr,0,2400);
-                        conn.onPacketRecv(type,Arrays.copyOf(arr,size));
+                        conn.onFragmentRecv(type,buffer,Arrays.copyOf(arr,size));
                     }
                 } catch (Exception e) {
                     LimeLog.warning("thread " +type+ " got exception " + e);
@@ -97,7 +113,7 @@ public class NvConnection implements SrtSocket.ClientListener {
                 var arr = new byte[2400];
                 while (!conn.stopped) {
                     var size = client.recv(arr);
-                    conn.onPacketRecv(type,Arrays.copyOf(arr,size));
+                    conn.onDataPacketRecv(type,arr);
                 }
             }
         };
@@ -112,16 +128,38 @@ public class NvConnection implements SrtSocket.ClientListener {
     }
 
 
-    private void onPacketRecv(int type, byte[] data) {
+    private void onFragmentRecv(int type, ConcurrentMap<Long,PacketBuffer> buffer, byte[] data) {
         var reader = new BitReader(data);
         var index = reader.readUint32LE();
         var timestamp = reader.readUint64LE();
-        var fragmentLength = reader.readUint16LE();
-        var fragmentStart = reader.readUint16LE();
-        var fragmentEnd = reader.readUint16LE();
+        var packetLength = reader.readUint32LE();
+        var fragmentStart = reader.readUint32LE();
         var buff = reader.left();
 
-        LimeLog.info(index + ","+timestamp + ","+fragmentLength +","+fragmentStart +","+fragmentEnd );
+        var packet = buffer.get(index);
+        if (packet == null) {
+            var packetBuff = new byte[(int) packetLength];
+            System.arraycopy(buff,0,packetBuff,(int)fragmentStart,buff.length);
+
+            var pkt = new PacketBuffer();
+            pkt.buffer = packetBuff;
+            pkt.totalLength = packetLength;
+            pkt.fullfilled = buff.length;
+            buffer.put(index, pkt);
+        } else {
+            System.arraycopy(buff,0,packet.buffer,(int)fragmentStart,buff.length);
+            packet.fullfilled += buff.length;
+            if (packet.fullfilled == packet.totalLength) {
+                this.onMediaPacketRecv(type,index,timestamp,packet.buffer);
+                buffer.remove(index);
+            }
+        }
+    }
+
+    private void onMediaPacketRecv(int type, long index, long timestamp, byte[] buffer) {
+        LimeLog.info(index + ","+timestamp + ","+buffer.length );
+    }
+    private void onDataPacketRecv(int type,  byte[] buffer) {
     }
 
 

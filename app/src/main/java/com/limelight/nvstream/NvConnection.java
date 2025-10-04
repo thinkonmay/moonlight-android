@@ -26,7 +26,6 @@ import io.github.thibaultbee.srtdroid.core.models.SrtSocket;
 public class NvConnection implements SrtSocket.ClientListener {
     private static String url = "http://localhost:3000/play/?server=dev.thinkmay.net&audio=183a2263-8062-4ebd-ad9b-17781c95688c&codec=h265&video=66425ed3-a732-42c3-8dd5-aed382279857&vmid=c17355bc-124c-42b4-98cf-7e4e3cc563f3&data=31ab8fe3-b82b-4b7a-8427-9e94ed5afc0c";
     private boolean stopped = false;
-    private String codec = "h264";
     private Thread videoThread,audioThread,hidThread,microphoneThread;
     private SrtSocket audioSocket,videoSocket,microphoneSocket;
     private NvWebsocket hidSocket;
@@ -54,7 +53,6 @@ public class NvConnection implements SrtSocket.ClientListener {
         var video = params.get("video");
         var codec = params.get("codec");
         var data = params.get("data");
-        this.codec = codec;
         assert server != null;
 
         this.videoSocket = new SrtSocket();
@@ -63,6 +61,7 @@ public class NvConnection implements SrtSocket.ClientListener {
                 server,
                 vmid,
                 video,
+                codec,
                 this.videoBuffer,
                 NvConnection.VIDEO);
         this.videoThread.start();
@@ -73,6 +72,7 @@ public class NvConnection implements SrtSocket.ClientListener {
                 server,
                 vmid,
                 audio,
+                "opus",
                 this.audioBuffer,
                 NvConnection.AUDIO);
         this.audioThread.start();
@@ -82,7 +82,7 @@ public class NvConnection implements SrtSocket.ClientListener {
         this.hidThread.start();
     }
 
-    private Thread createMediaThread(NvConnection conn, SrtSocket socket, String hostname, String vmid, String token, ConcurrentMap<Long,PacketBuffer> buffer, int type) {
+    private Thread createMediaThread(NvConnection conn, SrtSocket socket, String hostname, String vmid, String token, String codec, ConcurrentMap<Long,PacketBuffer> buffer, int type) {
         return new Thread() {
             public void run() {
                 String inetAddr = null;
@@ -91,14 +91,18 @@ public class NvConnection implements SrtSocket.ClientListener {
 
                     assert inetAddr != null;
                     socket.setSockFlag(SockOpt.TRANSTYPE, Transtype.LIVE);
-                    socket.setSockFlag(SockOpt.STREAMID,vmid+":"+token+":1456");
+                    socket.setSockFlag(SockOpt.STREAMID,vmid+":"+token+":1456:"+codec);
                     socket.setSockFlag(SockOpt.LATENCY,300);
+                    socket.setSockFlag(SockOpt.CONNTIMEO,10000);
                     socket.connect(inetAddr,50006);
 
                     var arr = new byte[2400];
                     while (!conn.stopped) {
                         var size = socket.recv(arr,0,2400);
-                        conn.onFragmentRecv(type,buffer,Arrays.copyOf(arr,size));
+                        try {
+                            conn.onFragmentRecv(type,buffer,Arrays.copyOf(arr,size));
+                        } catch (Exception e) {
+                        }
                     }
                 } catch (Exception e) {
                     LimeLog.warning("thread " +type+ " got exception " + e);

@@ -3,6 +3,7 @@ package com.limelight.nvstream;
 import com.limelight.LimeLog;
 import com.limelight.nvstream.av.audio.AudioRenderer;
 import com.limelight.nvstream.av.video.VideoDecoderRenderer;
+import com.limelight.nvstream.jni.MoonBridge;
 import com.limelight.utils.BitReader;
 
 import java.net.InetAddress;
@@ -15,8 +16,6 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import io.github.thibaultbee.srtdroid.core.enums.ErrorType;
 import io.github.thibaultbee.srtdroid.core.enums.SockOpt;
@@ -24,7 +23,7 @@ import io.github.thibaultbee.srtdroid.core.enums.Transtype;
 import io.github.thibaultbee.srtdroid.core.models.SrtSocket;
 
 public class NvConnection implements SrtSocket.ClientListener {
-    private static String url = "http://localhost:3000/play/?server=dev.thinkmay.net&audio=183a2263-8062-4ebd-ad9b-17781c95688c&codec=h265&video=66425ed3-a732-42c3-8dd5-aed382279857&vmid=c17355bc-124c-42b4-98cf-7e4e3cc563f3&data=31ab8fe3-b82b-4b7a-8427-9e94ed5afc0c";
+    private static String url = "http://localhost:3000/play/?server=dev.thinkmay.net&audio=ddf6af86-4596-4018-91e7-6fb74cd7c36e&codec=h265&video=ea375efc-4dbf-4953-b143-eecce083b0f5&vmid=dee2a363-5b98-43e7-a334-0657df174af1&data=61434e07-29d1-4ed3-9845-2849c2c3142c";
     private boolean stopped = false;
     private Thread videoThread,audioThread,hidThread,microphoneThread;
     private SrtSocket audioSocket,videoSocket,microphoneSocket;
@@ -33,18 +32,34 @@ public class NvConnection implements SrtSocket.ClientListener {
     private AudioRenderer audioRenderer;
     private NvConnectionListener listener;
 
-    class PacketBuffer {
-        byte[] buffer;
-        long fullfilled;
-        long totalLength;
-    }
-    private ConcurrentHashMap<Long,PacketBuffer> videoBuffer = new ConcurrentHashMap<>();
-    private ConcurrentHashMap<Long,PacketBuffer> audioBuffer = new ConcurrentHashMap<>();
-
     private static int VIDEO = 0;
     private static int AUDIO = 1;
     private static int HID = 2;
     private static int MICROPHONE = 3;
+
+
+    class NaluReceiveContext {
+        public NaluReceiveContext() {
+            this.buffer = new byte[]{};
+            this.fullfilled = 0;
+            this.total = 0;
+        }
+        byte[] buffer;
+        long fullfilled;
+        long total;
+        long frameIndex;
+        short naluIndex;
+        boolean isIDR;
+        boolean isRFI;
+        boolean isPPS;
+        boolean isSPS;
+        boolean isVPS;
+
+        long startTime;
+        long finishTime;
+    }
+
+
     public NvConnection(StreamConfiguration config) throws URISyntaxException {
         var params = NvConnection.getQueryParams(NvConnection.url);
         var server = params.get("server");
@@ -62,7 +77,6 @@ public class NvConnection implements SrtSocket.ClientListener {
                 vmid,
                 video,
                 codec,
-                this.videoBuffer,
                 NvConnection.VIDEO);
         this.videoThread.start();
 
@@ -73,7 +87,6 @@ public class NvConnection implements SrtSocket.ClientListener {
                 vmid,
                 audio,
                 "opus",
-                this.audioBuffer,
                 NvConnection.AUDIO);
         this.audioThread.start();
 
@@ -82,7 +95,7 @@ public class NvConnection implements SrtSocket.ClientListener {
         this.hidThread.start();
     }
 
-    private Thread createMediaThread(NvConnection conn, SrtSocket socket, String hostname, String vmid, String token, String codec, ConcurrentMap<Long,PacketBuffer> buffer, int type) {
+    private Thread createMediaThread(NvConnection conn, SrtSocket socket, String hostname, String vmid, String token, String codec, int type) {
         return new Thread() {
             public void run() {
                 String inetAddr = null;
@@ -97,12 +110,10 @@ public class NvConnection implements SrtSocket.ClientListener {
                     socket.connect(inetAddr,50006);
 
                     var arr = new byte[2400];
+                    var ctx = new NaluReceiveContext();
                     while (!conn.stopped) {
                         var size = socket.recv(arr,0,2400);
-                        try {
-                            conn.onFragmentRecv(type,buffer,Arrays.copyOf(arr,size));
-                        } catch (Exception e) {
-                        }
+                        conn.onFragmentRecv(type,ctx,Arrays.copyOf(arr,size));
                     }
                 } catch (Exception e) {
                     LimeLog.warning("thread " +type+ " got exception " + e);
@@ -114,10 +125,14 @@ public class NvConnection implements SrtSocket.ClientListener {
     private Thread createDataThread(NvConnection conn,NvWebsocket client,int type) {
         return new Thread() {
             public void run() {
-                var arr = new byte[2400];
-                while (!conn.stopped) {
-                    var size = client.recv(arr);
-                    conn.onDataPacketRecv(type,arr);
+                try {
+                    var arr = new byte[2400];
+                    while (!conn.stopped) {
+                        var size = client.recv(arr);
+                        conn.onHIDPacketRecv(Arrays.copyOf(arr,size));
+                    }
+                } catch (Exception e) {
+                    LimeLog.warning("thread " +type+ " got exception " + e);
                 }
             }
         };
@@ -125,45 +140,100 @@ public class NvConnection implements SrtSocket.ClientListener {
 
     public void stop() {
         this.stopped = true;
+        if (this.hidSocket != null) {
+            this.hidSocket.close();
+        }
+        if (this.audioSocket != null) {
+            this.audioSocket.close();
+        }
+        if (this.videoSocket != null) {
+            this.videoSocket.close();
+        }
         if (this.videoThread != null) {
             this.videoThread.interrupt();
             this.videoThread = null;
         }
-    }
-
-
-    private void onFragmentRecv(int type, ConcurrentMap<Long,PacketBuffer> buffer, byte[] data) {
-        var reader = new BitReader(data);
-        var index = reader.readUint32LE();
-        var timestamp = reader.readUint64LE();
-        var packetLength = reader.readUint32LE();
-        var fragmentStart = reader.readUint32LE();
-        var buff = reader.left();
-
-        var packet = buffer.get(index);
-        if (packet == null) {
-            var packetBuff = new byte[(int) packetLength];
-            System.arraycopy(buff,0,packetBuff,(int)fragmentStart,buff.length);
-
-            var pkt = new PacketBuffer();
-            pkt.buffer = packetBuff;
-            pkt.totalLength = packetLength;
-            pkt.fullfilled = buff.length;
-            buffer.put(index, pkt);
-        } else {
-            System.arraycopy(buff,0,packet.buffer,(int)fragmentStart,buff.length);
-            packet.fullfilled += buff.length;
-            if (packet.fullfilled == packet.totalLength) {
-                this.onMediaPacketRecv(type,index,timestamp,packet.buffer);
-                buffer.remove(index);
-            }
+        if (this.audioThread != null) {
+            this.audioThread.interrupt();
+            this.audioThread= null;
+        }
+        if (this.hidThread != null) {
+            this.hidThread.interrupt();
+            this.hidThread= null;
         }
     }
 
-    private void onMediaPacketRecv(int type, long index, long timestamp, byte[] buffer) {
-        LimeLog.info(index + ","+timestamp + ","+buffer.length );
+
+    private void onFragmentRecv(int type, NaluReceiveContext ctx, byte[] data) {
+        if (type == NvConnection.AUDIO) { // TODO
+            return;
+        }
+        if (data.length < 24) {
+            return;
+        }
+
+        try {
+
+            var reader = new BitReader(data);
+            var index = reader.readUint64LE();
+            var timestamp = reader.readUint64LE();
+
+            var naluIndex = reader.readByte();
+            var finalFlags = reader.readByte();
+            var naluLength = reader.readUint24LE();
+
+            var packetEntry = reader.readUint24LE();
+            var rest = reader.left();
+
+            ctx.isIDR = (finalFlags & (1 << 0)) > 0;
+            ctx.isRFI = (finalFlags & (1 << 1)) > 0;
+            ctx.isSPS = (finalFlags & (1 << 2)) > 0;
+            ctx.isPPS = (finalFlags & (1 << 3)) > 0;
+            ctx.isVPS = (finalFlags & (1 << 4)) > 0;
+            ctx.total = naluLength;
+            if (ctx.buffer.length == 0) {
+                ctx.buffer = new byte[(int)ctx.total];
+                ctx.startTime = System.currentTimeMillis();
+            }
+            System.arraycopy(rest,0, ctx.buffer,(int)packetEntry,rest.length);
+            ctx.fullfilled += rest.length;
+
+            if (ctx.fullfilled == ctx.total) {
+                ctx.finishTime = System.currentTimeMillis();
+                this.onVideoPacketRecv(index,timestamp,ctx,ctx.buffer);
+                ctx.buffer = new byte[]{};
+                ctx.total = 0;
+                ctx.fullfilled = 0;
+            }
+        } catch (Exception e) {
+            LimeLog.warning("failed to depacketize "+e.getMessage());
+        }
+
     }
-    private void onDataPacketRecv(int type,  byte[] buffer) {
+
+    private void onVideoPacketRecv(long index, long timestamp, NaluReceiveContext ctx, byte[] buffer) {
+        if (this.videoRenderer == null) {
+            return;
+        }
+
+        try {
+            this.videoRenderer.submitDecodeUnit(
+                    buffer,buffer.length,
+                    ctx.isPPS   ? MoonBridge.BUFFER_TYPE_PPS
+                    : ctx.isSPS ? MoonBridge.BUFFER_TYPE_SPS
+                    : ctx.isVPS ? MoonBridge.BUFFER_TYPE_VPS
+                    : 0,
+                    (int)index,
+                    ctx.isIDR ? MoonBridge.FRAME_TYPE_IDR : MoonBridge.FRAME_TYPE_PFRAME,
+                    (char)0,ctx.startTime,ctx.finishTime);
+        } catch (Exception e) {
+            LimeLog.warning("decode exception "+e.getMessage());
+        }
+    }
+
+    private void onAudioPacketRecv(long index, long timestamp, byte[] buffer) {
+    }
+    private void onHIDPacketRecv(byte[] buffer) {
     }
 
 
@@ -172,6 +242,8 @@ public class NvConnection implements SrtSocket.ClientListener {
         this.audioRenderer = audioRenderer;
         this.videoRenderer = videoDecoderRenderer;
         this.listener = connectionListener;
+
+        this.videoRenderer.setup(MoonBridge.VIDEO_FORMAT_H265,1920,1080,120);
     }
     
     public void sendMouseMove(final short deltaX, final short deltaY)

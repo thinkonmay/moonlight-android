@@ -41,8 +41,12 @@ public class BitReader {
         return readByte() | (readByte() << 8);
     }
 
+    public long readUint24LE() {
+        return (long)readByte() | ((long) readByte() << 8) | ((long) readByte() << 16);
+    }
+
     public long readUint32LE() {
-        return readByte() | ((long) readByte() << 8) | ((long) readByte() << 16) | ((long) readByte() << 24);
+        return (long)readByte() | ((long) readByte() << 8) | ((long) readByte() << 16) | ((long) readByte() << 24);
     }
 
     public long readUint64LE() {

@@ -25,7 +25,7 @@ import io.github.thibaultbee.srtdroid.core.models.SrtSocket;
 public class NvConnection implements SrtSocket.ClientListener {
     private static String url = "http://localhost:3000/play/?server=dev.thinkmay.net&audio=ddf6af86-4596-4018-91e7-6fb74cd7c36e&codec=h265&video=ea375efc-4dbf-4953-b143-eecce083b0f5&vmid=dee2a363-5b98-43e7-a334-0657df174af1&data=61434e07-29d1-4ed3-9845-2849c2c3142c";
     private boolean stopped = false;
-    private Thread videoThread,audioThread,hidThread,microphoneThread;
+    private Thread videoThread,audioThread,hidThread,microphoneThread,connectionThread;
     private SrtSocket audioSocket,videoSocket,microphoneSocket;
     private NvWebsocket hidSocket;
     private VideoDecoderRenderer videoRenderer;
@@ -78,7 +78,6 @@ public class NvConnection implements SrtSocket.ClientListener {
                 video,
                 codec,
                 NvConnection.VIDEO);
-        this.videoThread.start();
 
         this.audioSocket = new SrtSocket();
         this.audioThread = this.createMediaThread(this,
@@ -88,11 +87,17 @@ public class NvConnection implements SrtSocket.ClientListener {
                 audio,
                 "opus",
                 NvConnection.AUDIO);
-        this.audioThread.start();
 
-        this.hidSocket = new NvWebsocket("https://"+server+":444/broadcasters/websocket?vmid="+vmid+"&token="+data);
+        this.hidSocket = new NvWebsocket("wss://"+server+":444/broadcasters/websocket?vmid="+vmid+"&token="+data);
         this.hidThread = this.createDataThread(this,this.hidSocket,NvConnection.HID);
-        this.hidThread.start();
+    }
+
+
+    @Override
+    public void onConnectionLost(@NotNull SrtSocket srtSocket, @NotNull ErrorType errorType, @NotNull InetSocketAddress inetSocketAddress, int i) {
+        if (listener != null) {
+            listener.connectionTerminated(404);
+        }
     }
 
     private Thread createMediaThread(NvConnection conn, SrtSocket socket, String hostname, String vmid, String token, String codec, int type) {
@@ -109,6 +114,10 @@ public class NvConnection implements SrtSocket.ClientListener {
                     socket.setSockFlag(SockOpt.CONNTIMEO,10000);
                     socket.connect(inetAddr,50006);
 
+                    if (listener != null) {
+                        listener.connectionStatusUpdate(200 + type);
+                    }
+
                     var arr = new byte[2400];
                     var ctx = new NaluReceiveContext();
                     while (!conn.stopped) {
@@ -117,6 +126,9 @@ public class NvConnection implements SrtSocket.ClientListener {
                     }
                 } catch (Exception e) {
                     LimeLog.warning("thread " +type+ " got exception " + e);
+                    if (listener != null) {
+                        listener.connectionTerminated(404);
+                    }
                 }
             }
         };
@@ -133,6 +145,9 @@ public class NvConnection implements SrtSocket.ClientListener {
                     }
                 } catch (Exception e) {
                     LimeLog.warning("thread " +type+ " got exception " + e);
+                    if (listener != null) {
+                        listener.connectionTerminated(404);
+                    }
                 }
             }
         };
@@ -237,13 +252,28 @@ public class NvConnection implements SrtSocket.ClientListener {
     }
 
 
-    public void start(final AudioRenderer audioRenderer, final VideoDecoderRenderer videoDecoderRenderer, final NvConnectionListener connectionListener)
+    public void start(final AudioRenderer AudioRenderer, final VideoDecoderRenderer videoDecoderRenderer, final NvConnectionListener connectionListener)
     {
-        this.audioRenderer = audioRenderer;
-        this.videoRenderer = videoDecoderRenderer;
-        this.listener = connectionListener;
+        this.connectionThread = new Thread(new Runnable() {
+            public void run() {
+                audioRenderer = AudioRenderer;
+                videoRenderer = videoDecoderRenderer;
+                listener = connectionListener;
 
-        this.videoRenderer.setup(MoonBridge.VIDEO_FORMAT_H265,1920,1080,120);
+                listener.connectionStarted();
+
+                videoRenderer.setup(MoonBridge.VIDEO_FORMAT_H265,1920,1080,120);
+                videoRenderer.start();
+
+
+                hidSocket.connect();
+                audioThread.start();
+                videoThread.start();
+                hidThread.start();
+            }
+        });
+
+        this.connectionThread.start();
     }
     
     public void sendMouseMove(final short deltaX, final short deltaY)
@@ -322,10 +352,6 @@ public class NvConnection implements SrtSocket.ClientListener {
         return;
     }
 
-    @Override
-    public void onConnectionLost(@NotNull SrtSocket srtSocket, @NotNull ErrorType errorType, @NotNull InetSocketAddress inetSocketAddress, int i) {
-        // TODO
-    }
 
     private static Map<String, String> getQueryParams(String urlString) {
         Map<String, String> queryParams = new HashMap<>();

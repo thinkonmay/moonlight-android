@@ -275,7 +275,8 @@ public class Game extends Activity implements SurfaceHolder.Callback,
         // Warn the user if they're on a metered connection
         ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         if (connMgr.isActiveNetworkMetered()) {
-            displayTransientMessage(getResources().getString(R.string.conn_metered));
+            // TODO
+            LimeLog.info(getResources().getString(R.string.conn_metered));
         }
 
         // Make sure Wi-Fi is fully powered up
@@ -2140,21 +2141,6 @@ public class Game extends Activity implements SurfaceHolder.Callback,
         return handleMotionEvent(view, event);
     }
 
-    @Override
-    public void stageStarting(final String stage) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (spinner != null) {
-                    spinner.setMessage(getResources().getString(R.string.conn_starting) + " " + stage);
-                }
-            }
-        });
-    }
-
-    @Override
-    public void stageComplete(String stage) {
-    }
 
     private void stopConnection() {
         if (connecting || connected) {
@@ -2180,27 +2166,40 @@ public class Game extends Activity implements SurfaceHolder.Callback,
     }
 
     @Override
-    public void stageFailed(final String stage, final int portFlags, final int errorCode) {
-    }
-
-    @Override
     public void connectionTerminated(final int errorCode) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (spinner != null) {
+                    spinner.setMessage(getResources().getString(R.string.conn_starting) + " terminated " + errorCode);
+                }
+            }
+        });
+        finish();
     }
 
     @Override
     public void connectionStatusUpdate(final int connectionStatus) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (spinner != null) {
+                    spinner.setMessage(getResources().getString(R.string.conn_starting) + " status " + connectionStatus);
+                }
+            }
+        });
     }
 
     @Override
     public void connectionStarted() {
-    }
-
-    @Override
-    public void displayMessage(final String message) {
-    }
-
-    @Override
-    public void displayTransientMessage(final String message) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (spinner != null) {
+                    spinner.setMessage(getResources().getString(R.string.conn_starting) + " started ");
+                }
+            }
+        });
     }
 
     @Override
